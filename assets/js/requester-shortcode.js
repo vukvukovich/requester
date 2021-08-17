@@ -6,7 +6,7 @@ function ready(fn) {
 	}
 }
 
-async function fetchData() {
+async function fetchAndDisplayData() {
 	const response = await fetch(requester.ajax_url, {
 		method: "post",
 		headers: {
@@ -20,26 +20,23 @@ async function fetchData() {
 
 	if (response.status === 200) {
 		// Process data here
-		let requesterEl = document.getElementById("requester");
-		let title = document.createElement("h2");
+		let requesterEl = document.getElementById("requester-table");
 		let data = await response.json();
-		
+
 		console.log(data);
 
-		document.getElementById("loader").style.display = "none";
-		
+		document.getElementById("loader").remove();
+
 		if (data.error !== undefined) {
-			title.innerText = data.error;
-			requesterEl.append(title);
+			const errorLabel = document.createElement("label");
+			errorLabel.innerText = data.error;
+			requesterEl.append(errorLabel);
 			return;
 		} else {
-			title.innerText = data.title;
-			requesterEl.append(title);
 			generateTable(requesterEl, data);
 		}
-			
-
 	} else {
+		throw new Error(`HTTP error! status: ${response.status}`);
 		// Rest of status codes (400,500,303), can be handled here appropriately
 	}
 }
@@ -50,6 +47,11 @@ function generateTable(element, data) {
 	console.log(tableData);
 
 	let table = document.createElement("table");
+	let title = document.createElement("caption");
+
+	title.innerText = data.title;
+	table.append(title);
+
 	let tableHead = document.createElement("thead");
 	let tableHeaderRow = document.createElement("tr");
 	let tableBody = document.createElement("tbody");
@@ -72,9 +74,7 @@ function generateTable(element, data) {
 			if (cellData == "date") {
 				const date = new Date(rowData[cellData]);
 
-				console.log(String(requester.locale));
 				tableTd.innerText = date.toLocaleDateString(requester.locale);
-				// tableTd.innerText = date.toLocaleDateString();
 			} else {
 				tableTd.innerText = rowData[cellData];
 			}
@@ -85,8 +85,7 @@ function generateTable(element, data) {
 	}
 
 	table.append(tableBody);
-
 	element.append(table);
 }
 
-ready(fetchData());
+ready(fetchAndDisplayData());

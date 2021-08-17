@@ -198,7 +198,7 @@ class Requester {
 			array(
 				'nonce'    => wp_create_nonce( self::$nonce_context ),
 				'ajax_url' => admin_url( 'admin-ajax.php' ),
-				'locale'   => get_locale(),
+				'locale'   => get_bloginfo( 'language' ),
 			)
 		);
 		add_shortcode( 'requester', array( $this, 'return_data_via_ajax' ) );
@@ -223,15 +223,17 @@ class Requester {
 		wp_enqueue_style( 'requester-shortcode' );
 		wp_enqueue_script( 'requester-shortcode' );
 
-		return '<div id="requester">
-					<div id="loader">
-						<div class="rect1"></div>
-						<div class="rect2"></div>
-						<div class="rect3"></div>
-						<div class="rect4"></div>
-						<div class="rect5"></div>
-					</div>
-				</div>';
+		return <<<HTML
+			<div id="requester-table">
+				<div id="loader">
+					<div class="rect1"></div>
+					<div class="rect2"></div>
+					<div class="rect3"></div>
+					<div class="rect4"></div>
+					<div class="rect5"></div>
+				</div>
+			</div>	
+HTML;
 	}
 
 	/**
