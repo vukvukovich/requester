@@ -244,12 +244,24 @@ HTML;
 	public function return_data() {
 		check_ajax_referer( self::$nonce_context, 'nonce' );
 
-		$response = wp_remote_get( 'https://miusage.com/v1/challenge/1/' );
+		if ( false === ( $data = get_transient( 'requester' ) ) ) {
+			// this code runs when there is no valid transient set
+			$response = wp_remote_get( 'https://miusage.com/v1/challenge/1/' );
 
-		if ( is_array( $response ) && ! is_wp_error( $response ) ) {
-			wp_die( ( new Requester_Data_Validator( $response['body'] ) )->validate() ); // phpcs:ignore
+			if ( is_array( $response ) && ! is_wp_error( $response ) ) {
+				$data = ( new Requester_Data_Validator( $response['body'] ) )->validate();
+
+				if ( ! $data ) {
+					wp_die( wp_json_encode( array( 'error' => __( 'Invalid data.', 'requester' ) ) ) );
+				}
+
+				set_transient( 'requester', $data, HOUR_IN_SECONDS );
+				wp_die( wp_json_encode( $data ) );
+			}
+
+			wp_die( wp_json_encode( array( 'error' => __( 'API data not available.', 'requester' ) ) ) );
+		} else {
+			wp_die( wp_json_encode( $data ) );
 		}
-
-		wp_die( wp_json_encode( array( 'error' => __( 'API data not available.', 'requester' ) ) ) );
 	}
 }

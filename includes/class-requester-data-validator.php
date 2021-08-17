@@ -118,9 +118,9 @@ class Requester_Data_Validator {
 			$this->is_title_valid() &&
 			$this->are_headers_valid() &&
 			$this->are_rows_valid() ) {
-			return wp_json_encode( $this->payload, JSON_HEX_TAG | JSON_FORCE_OBJECT );
+			return $this->payload;
 		}
 
-		return wp_json_encode( array( 'error' => __( 'Invalid data.', 'requester' ) ) );
+		return false;
 	}
 }
