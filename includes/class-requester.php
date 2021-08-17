@@ -199,11 +199,36 @@ class Requester {
 				'nonce'    => wp_create_nonce( self::$nonce_context ),
 				'ajax_url' => admin_url( 'admin-ajax.php' ),
 				'locale'   => get_bloginfo( 'language' ),
+				'is_admin' => is_admin(),
 			)
 		);
 		add_shortcode( 'requester', array( $this, 'return_data_via_ajax' ) );
 		add_action( 'wp_ajax_return_data', array( $this, 'return_data' ) );
 		add_action( 'wp_ajax_nopriv_return_data', array( $this, 'return_data' ) );
+
+		add_action( 'admin_menu', array( $this, 'register_admin_menu_page' ) );
+	}
+
+	public function register_admin_menu_page() {
+		add_menu_page(
+			__( 'Requester admin page', 'requester' ),
+			__( 'Requester', 'requester' ),
+			'manage_options',
+			'requester',
+			array( $this, 'admin_page_contents' ),
+			'dashicons-welcome-widgets-menus',
+			99
+		);
+	}
+
+	public function admin_page_contents() {
+		?>
+			<h1>
+				<?php esc_html_e( 'Requester admin page.', 'requester' ); ?>
+			</h1>
+		<?php echo $this->return_data_via_ajax(); // phpcs:ignore ?>
+			<button id="requester-refresh-button" type="submit">Refresh</button>
+		<?php
 	}
 
 	/**
@@ -216,16 +241,15 @@ class Requester {
 	/**
 	 *  Shortcode callback
 	 *
-	 * @param mixed $atts Shortcode attributes.
 	 * @return string
 	 */
-	public function return_data_via_ajax( $atts ) {
+	public function return_data_via_ajax() {
 		wp_enqueue_style( 'requester-shortcode' );
 		wp_enqueue_script( 'requester-shortcode' );
 
 		return <<<HTML
-			<div id="requester-table">
-				<div id="loader">
+			<div id="requester-content">
+				<div id="loader" style="display:none">
 					<div class="rect1"></div>
 					<div class="rect2"></div>
 					<div class="rect3"></div>
@@ -244,7 +268,11 @@ HTML;
 	public function return_data() {
 		check_ajax_referer( self::$nonce_context, 'nonce' );
 
-		if ( false === ( $data = get_transient( 'requester' ) ) ) {
+		if ( isset( $_POST['refresh'] ) ) {
+			delete_transient( 'requester' );
+		}
+
+		if ( false === ( $data = get_transient( 'requester' ) ) ) { // phpcs:ignore
 			// this code runs when there is no valid transient set
 			$response = wp_remote_get( 'https://miusage.com/v1/challenge/1/' );
 

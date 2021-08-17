@@ -1,3 +1,7 @@
+#requester-content {
+    display: block;
+    width: auto;
+}
 #loader {
 	margin: 100px auto;
 	width: 50px;
@@ -11,7 +15,6 @@
 	height: 100%;
 	width: 6px;
 	display: inline-block;
-
 	-webkit-animation: sk-stretchdelay 1.2s infinite ease-in-out;
 	animation: sk-stretchdelay 1.2s infinite ease-in-out;
 }
