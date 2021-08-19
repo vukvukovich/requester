@@ -165,7 +165,7 @@ class Requester {
 		self::$version       = '1.0.0';
 		self::$path          = plugin_dir_path( __DIR__ );
 		self::$url           = plugin_dir_url( __DIR__ );
-		self::$assets_url    = self::$url . 'assets';
+		self::$assets_url    = self::$url . 'assets/';
 		self::$nonce_context = 'requester-example-nonce';
 
 		add_action( 'init', array( $this, 'init_hooks' ) );
@@ -206,6 +206,22 @@ class Requester {
 	}
 
 	/**
+	 * Get plugin stylesheet filename
+	 *
+	 * @return string requester.css or requester-admin.css
+	 */
+	public function get_style_filename() {
+		$filename = 'requester';
+		$folder   = $file_extension = 'css'; // phpcs:ignore
+
+		if ( $this->is_admin_page() ) {
+			$filename .= '-admin';
+		}
+
+		return self::$assets_url . $folder . '/' . $filename . '.' . $file_extension;
+	}
+
+	/**
 	 * Initialize hooks and actions
 	 * (We could have used wp-util here as a dependency for requester-shortcode.js
 	 *  and use wp.ajax in the script but I prefer plain JS)
@@ -213,10 +229,10 @@ class Requester {
 	 * @return void
 	 */
 	public function init_hooks() {
-		wp_register_style( 'requester-shortcode', self::$url . 'assets/css/requester-shortcode.css', array(), self::$version );
-		wp_register_script( 'requester-shortcode', self::$url . 'assets/js/requester-shortcode.js', array(), self::$version, false );
+		wp_register_style( 'requester', $this->get_style_filename(), array(), self::$version );
+		wp_register_script( 'requester', self::$url . 'assets/js/requester.js', array(), self::$version, false );
 		wp_localize_script(
-			'requester-shortcode',
+			'requester',
 			'requester',
 			array(
 				'nonce'    => wp_create_nonce( self::$nonce_context ),
@@ -233,6 +249,11 @@ class Requester {
 		add_action( 'in_admin_header', array( 'Requester_Admin_Page', 'get_header' ), 100 );
 	}
 
+	/**
+	 * Register admin page.
+	 *
+	 * @return void
+	 */
 	public function register_admin_menu_page() {
 		add_menu_page(
 			__( 'Requester admin page', 'requester' ),
@@ -258,8 +279,8 @@ class Requester {
 	 * @return string
 	 */
 	public function return_data_via_ajax() {
-		wp_enqueue_style( 'requester-shortcode' );
-		wp_enqueue_script( 'requester-shortcode' );
+		wp_enqueue_style( 'requester' );
+		wp_enqueue_script( 'requester' );
 
 		return <<<HTML
 			<div id="requester-data">
@@ -287,7 +308,7 @@ HTML;
 		}
 
 		if ( false === ( $data = get_transient( 'requester' ) ) ) { // phpcs:ignore
-			// this code runs when there is no valid transient set
+			// This code runs when there is no valid transient set.
 			$response = wp_remote_get( 'https://miusage.com/v1/challenge/1/' );
 
 			if ( is_array( $response ) && ! is_wp_error( $response ) ) {

@@ -35,7 +35,7 @@ class Requester_Admin_Page {
 
 		printf(
 			'<div id="requester-header">
-			    <img src="%s/images/logo.svg" alt="Requester"/>
+			    <img src="%simages/logo.svg" alt="Requester"/>
 		    </div>',
 			esc_url( $plugin->get_assets_url() )
 		);
@@ -67,7 +67,7 @@ class Requester_Admin_Page {
 					<p class="wp-mail-smtp-submit">
 					<button id="requester-refresh-button" type="submit" class="requester-refresh-button">
 						<span class="button-label"><?php esc_attr_e( 'Refresh', 'requester' ); ?></span>
-						<img src="<?php echo esc_url( Requester::get_assets_url() . '/images/button-loader.svg' ); ?>" alt="Loading" class="button-loader">
+						<img src="<?php echo esc_url( Requester::get_assets_url() . 'images/button-loader.svg' ); ?>" alt="Loading" class="button-loader">
 					</button>
 					</p>
 				</div>

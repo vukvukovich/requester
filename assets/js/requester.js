@@ -69,7 +69,9 @@ requester = {
 			tableBody = document.createElement("tbody");
 		tableData = data.data;
 
-		table.className = "wp-list-table widefat fixed striped table-view-list";
+		table.className = this.is_admin
+			? "wp-list-table widefat fixed striped table-view-list"
+			: "requester-table";
 		title.innerText = data.title;
 		table.append(title);
 
