@@ -1,37 +1,42 @@
+@import "requester-table-loader.css";
+
+#requester-data {
+	border: 1px solid rgb(228, 228, 228);
+}
 .requester-table caption {
-	background-color: #fff;
 	padding: 8px 10px;
 	font-weight: bold;
-	font-size: 16px;
-	border: 1px solid #c3c4c7;
-	border-bottom: none;
+	font-size: 24px;
+	padding: 15px 0 20px 0;
 }
-
-.requester-table {
-	background: #012b39;
-	border-radius: 0.25em;
+.requester-table table {
+	min-width: 400px;
 	border-collapse: collapse;
-	margin: 1em;
+	color: #444;
 }
-.requester-table th {
-	border-bottom: 1px solid #364043;
-	color: #e2b842;
-	font-size: 0.85em;
-	font-weight: 600;
-	padding: 0.5em 1em;
-	text-align: left;
+.requester-table th,
+.requester-table td  {
+	text-align: center;
+	padding: 10px;
 }
-.requester-table td {
-	color: #fff;
-	font-weight: 400;
-	padding: 0.65em 1em;
+.requester-table caption,
+.requester-table thead th {
+	background-color: rgb(243, 243, 243);
+	border: none;
 }
-.disabled td {
-	color: #4f5f64;
+.requester-table thead th {
+	font-size: 16px;
+	line-height: 18px;
+	border-bottom:3px solid #ff982d;
 }
-.requester-table body tr {
-	transition: background 0.25s ease;
+.requester-table tbody {
+	background-color: #fff;
 }
 .requester-table tbody tr:hover {
-	background: #014055;
+	background-color: #ff992d1f;
+
+}
+.requester-table tbody td {
+	font-size: 16px;
+	border: none;
 }
