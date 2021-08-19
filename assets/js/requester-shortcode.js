@@ -1,13 +1,9 @@
 requester = {
 	...requester,
-	element: document.getElementById("requester-content"),
-	loader: {
-		element: document.getElementById("loader"),
-		show: function () {
-			this.element.style.display = "block";
-		},
-		hide: function () {
-			this.element.style.display = "none";
+	element: document.getElementById("requester-data"),
+	elements: {
+		table: {
+			loader: document.getElementById("table-loader"),
 		},
 	},
 	init: async function (refresh = false) {
@@ -17,7 +13,7 @@ requester = {
 			// Process data here
 			let data = await response.json();
 
-			requester.loader.hide();
+			this.hide(this.elements.table.loader);
 
 			if (data.error !== undefined) {
 				const errorLabel = document.createElement("label");
@@ -26,6 +22,12 @@ requester = {
 				return;
 			} else {
 				this.generateTable(this.element, data);
+
+				if (refresh && this.is_admin) {
+					this.show(this.elements.refreshButton.label);
+					this.hide(this.elements.refreshButton.loader);
+					this.enable(this.elements.refreshButton.element);
+				}
 			}
 		} else {
 			throw new Error(`HTTP error! status: ${response.status}`);
@@ -33,18 +35,22 @@ requester = {
 		}
 	},
 	fetchData: async function (refresh = false) {
-		requester.loader.show();
+		this.show(this.elements.table.loader);
 
 		const postData = {
 			action: "return_data",
-			nonce: requester.nonce,
+			nonce: this.nonce,
 		};
 
-		if (refresh && requester.is_admin) {
+		if (refresh && this.is_admin) {
 			postData.refresh = true;
+
+			this.hide(this.elements.refreshButton.label);
+			this.show(this.elements.refreshButton.loader);
+			this.disable(this.elements.refreshButton.element);
 		}
 
-		const response = await fetch(requester.ajax_url, {
+		const response = await fetch(this.ajax_url, {
 			method: "post",
 			headers: {
 				"Content-type":
@@ -61,13 +67,19 @@ requester = {
 			tableHead = document.createElement("thead"),
 			tableHeaderRow = document.createElement("tr"),
 			tableBody = document.createElement("tbody");
-			tableData = data.data;
+		tableData = data.data;
 
+		table.className = "wp-list-table widefat fixed striped table-view-list";
 		title.innerText = data.title;
 		table.append(title);
 
 		for (header in tableData.headers) {
 			const tableTh = document.createElement("th");
+			tableTh.scope = "col";
+			tableTh.id = tableData.headers[header]
+				.replace(" ", "-")
+				.toLowerCase();
+			tableTh.className = "manage-column";
 			tableTh.innerText = tableData.headers[header];
 			tableHeaderRow.append(tableTh);
 		}
@@ -84,9 +96,7 @@ requester = {
 				if (cellData == "date") {
 					const date = new Date(rowData[cellData]);
 
-					tableTd.innerText = date.toLocaleDateString(
-						requester.locale
-					);
+					tableTd.innerText = date.toLocaleDateString(this.locale);
 				} else {
 					tableTd.innerText = rowData[cellData];
 				}
@@ -99,12 +109,33 @@ requester = {
 		table.append(tableBody);
 		element.append(table);
 	},
+	show: function (element) {
+		element.style.display = "block";
+	},
+	hide: function (element) {
+		element.style.display = "none";
+	},
+	enable: function (element) {
+		element.disabled = false;
+	},
+	disable: function (element) {
+		element.disabled = true;
+	},
 };
 
 document.addEventListener("load", requester.init());
 
 if (requester.is_admin) {
-	document.getElementById("requester-refresh-button").addEventListener(
+	requester.elements.refreshButton = {
+		element: document.getElementById("requester-refresh-button"),
+		label: document.getElementsByClassName("button-label")[0],
+		loader: document.getElementsByClassName("button-loader")[0],
+	};
+	requester.test = function () {
+		console.log(this);
+	};
+
+	requester.elements.refreshButton.element.addEventListener(
 		"click",
 		function (e) {
 			const oldTable = requester.element.getElementsByTagName("table")[0];

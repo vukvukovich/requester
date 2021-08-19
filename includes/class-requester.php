@@ -75,6 +75,22 @@ class Requester {
 	}
 
 	/**
+	 * Plugin directory url
+	 *
+	 * @var string $url
+	 */
+	private static $assets_url;
+
+	/**
+	 * Get plugin directory url
+	 *
+	 * @return string
+	 */
+	public static function get_assets_url() {
+		return self::$assets_url;
+	}
+
+	/**
 	 * Plugin instance
 	 *
 	 * @var object $instance
@@ -86,7 +102,7 @@ class Requester {
 	 *
 	 * @return Requester Returns Requester object
 	 */
-	public static function init() {
+	public static function get_instance() {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
 		}
@@ -149,37 +165,44 @@ class Requester {
 		self::$version       = '1.0.0';
 		self::$path          = plugin_dir_path( __DIR__ );
 		self::$url           = plugin_dir_url( __DIR__ );
+		self::$assets_url    = self::$url . 'assets';
 		self::$nonce_context = 'requester-example-nonce';
 
-		add_action( 'init', array( $this, 'init_settings' ), 5 );
 		add_action( 'init', array( $this, 'init_hooks' ) );
 
 		do_action( 'requester_loaded' );
 	}
 
 	/**
-	 * Initialize plugin settings
+	 * Check if we are currently on the plugin admin page.
 	 *
-	 * @return void
+	 * @return bool
 	 */
-	public function init_settings() {
-		self::$defaults = array(
-			'requester' => array(),
-		);
-
-		self::$settings = get_option( 'requester_settings' );
-
-		// Return defaults if not initialized yet.
-		self::$settings = wp_parse_args( self::$settings, self::$defaults );
-
-		// Return defaults if setting is left blank.
-		foreach ( self::$settings as $setting => $value ) {
-			if ( empty( $value ) ) {
-				self::$settings[ $setting ] = self::$defaults[ $setting ];
-			}
+	public function is_admin_page() {
+		if ( ! is_admin() ) {
+			return false;
 		}
 
-		update_option( 'requester_settings', self::$settings );
+		if ( isset( $_GET['page'] ) && 'requester' === $_GET['page'] ) { // phpcs:ignore
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check if referer is plugin admin page.
+	 */
+	public function is_referer() {
+		if ( ! is_admin() ) {
+			return false;
+		}
+
+		$referer_url = wp_get_referer();
+
+		wp_parse_str( wp_parse_url( $referer_url )['query'], $referer );
+
+		return 'requester' === $referer['page'];
 	}
 
 	/**
@@ -207,6 +230,7 @@ class Requester {
 		add_action( 'wp_ajax_nopriv_return_data', array( $this, 'return_data' ) );
 
 		add_action( 'admin_menu', array( $this, 'register_admin_menu_page' ) );
+		add_action( 'in_admin_header', array( 'Requester_Admin_Page', 'get_header' ), 100 );
 	}
 
 	public function register_admin_menu_page() {
@@ -215,20 +239,10 @@ class Requester {
 			__( 'Requester', 'requester' ),
 			'manage_options',
 			'requester',
-			array( $this, 'admin_page_contents' ),
+			array( 'Requester_Admin_Page', 'render' ),
 			'dashicons-welcome-widgets-menus',
 			99
 		);
-	}
-
-	public function admin_page_contents() {
-		?>
-			<h1>
-				<?php esc_html_e( 'Requester admin page.', 'requester' ); ?>
-			</h1>
-		<?php echo $this->return_data_via_ajax(); // phpcs:ignore ?>
-			<button id="requester-refresh-button" type="submit">Refresh</button>
-		<?php
 	}
 
 	/**
@@ -248,8 +262,8 @@ class Requester {
 		wp_enqueue_script( 'requester-shortcode' );
 
 		return <<<HTML
-			<div id="requester-content">
-				<div id="loader" style="display:none">
+			<div id="requester-data">
+				<div id="table-loader" style="display:none">
 					<div class="rect1"></div>
 					<div class="rect2"></div>
 					<div class="rect3"></div>
@@ -268,7 +282,7 @@ HTML;
 	public function return_data() {
 		check_ajax_referer( self::$nonce_context, 'nonce' );
 
-		if ( isset( $_POST['refresh'] ) ) {
+		if ( isset( $_POST['refresh'] ) && $this->is_referer() ) {
 			delete_transient( 'requester' );
 		}
 

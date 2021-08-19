@@ -60,12 +60,16 @@ spl_autoload_register(
 			strtolower( $classname )
 		);
 
-		$file = dirname( __FILE__ ) . '/includes/class-' . $file_name . '.php';
+		$dirs = array( '/includes', '/includes/admin' );
 
-		if ( file_exists( $file ) ) {
-			require $file;
+		foreach ( $dirs as $dir ) {
+			$file = dirname( __FILE__ ) . $dir . '/class-' . $file_name . '.php';
+
+			if ( file_exists( $file ) ) {
+				require $file;
+			}
 		}
 	}
 );
 
-Requester::init();
+Requester::get_instance();
