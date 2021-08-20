@@ -26,11 +26,11 @@ class Requester_Ajax_Endpoints {
 	 *
 	 * @return void
 	 */
-	public function return_data() {
+	public static function return_data() {
 		check_ajax_referer( Requester::get_nonce_context(), 'nonce' );
 
 		if ( isset( $_POST['refresh'] ) && Requester::is_referer() ) {
-			delete_transient( 'requester' );
+			Requester::flush_cache();
 		}
 
 		if ( false === ( $data = get_transient( 'requester' ) ) ) { // phpcs:ignore
@@ -44,7 +44,7 @@ class Requester_Ajax_Endpoints {
 					wp_die( wp_json_encode( array( 'error' => __( 'Invalid data.', 'requester' ) ) ) );
 				}
 
-				set_transient( 'requester', $data, HOUR_IN_SECONDS );
+				set_transient( 'requester', $data, Requester::get_settings()['cache_expiration'] );
 				wp_die( wp_json_encode( $data ) );
 			}
 

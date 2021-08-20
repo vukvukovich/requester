@@ -27,38 +27,6 @@ class Requester {
 	}
 
 	/**
-	 * Plugin DB version
-	 *
-	 * @var string $db_version
-	 */
-	private static $db_version;
-
-	/**
-	 * Get plugin DB version
-	 *
-	 * @return string The version number of the plugin database set
-	 */
-	public static function get_db_version() {
-		return self::$db_version;
-	}
-
-	/**
-	 * Plugin directory path
-	 *
-	 * @var string $path
-	 */
-	private static $path;
-
-	/**
-	 * Get plugin path
-	 *
-	 * @return string Plugin directory path
-	 */
-	public static function get_path() {
-		return self::$path;
-	}
-
-	/**
 	 * Plugin directory url
 	 *
 	 * @var string $url
@@ -98,35 +66,6 @@ class Requester {
 	private static $instance;
 
 	/**
-	 * Initialize plugin
-	 *
-	 * @return Requester Returns Requester object
-	 */
-	public static function get_instance() {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-
-		return self::$instance;
-	}
-
-		/**
-		 * Plugin default settings
-		 *
-		 * @var object $defaults
-		 */
-	private static $defaults;
-
-	/**
-	 * Get default plugin settings
-	 *
-	 * @return object $defaults
-	 */
-	public static function get_defaults() {
-		return self::$defaults;
-	}
-
-	/**
 	 * Plugin current user settings from DB
 	 *
 	 * @var object $settings
@@ -163,24 +102,41 @@ class Requester {
 	 */
 	private function __construct() {
 		self::$version       = '1.0.0';
-		self::$path          = plugin_dir_path( __DIR__ );
 		self::$url           = plugin_dir_url( __DIR__ );
 		self::$assets_url    = self::$url . 'assets/';
 		self::$nonce_context = 'requester-example-nonce';
 
-		add_action( 'init', array( $this, 'init_hooks' ) );
+		add_action( 'init', array( $this, 'init_scripts' ) );
+		add_action( 'init', array( $this, 'init_settings' ), 5 );
+		add_action( 'init', array( $this, 'init_requirements' ) );
+		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'cli_init', array( 'Requester_CLI', 'register_commands' ) );
 
 		do_action( 'requester_loaded' );
 	}
 
 	/**
-	 * Initialize hooks and actions
+	 * Initialize plugin
+	 *
+	 * @return Requester Returns Requester object
+	 */
+	public static function get_instance() {
+		if ( null === self::$instance ) {
+			self::$instance = new self();
+		}
+
+		return self::$instance;
+	}
+
+	/**
+	 * Initialize scripts
+	 *
 	 * (We could have used wp-util here as a dependency for requester-shortcode.js
 	 *  and use wp.ajax in the script but I prefer plain JS)
 	 *
 	 * @return void
 	 */
-	public function init_hooks() {
+	public function init_scripts() {
 		wp_register_style( 'requester', $this->get_style_filename(), array(), self::$version );
 		wp_register_script( 'requester', self::$url . 'assets/js/requester.js', array(), self::$version, false );
 		wp_localize_script(
@@ -193,8 +149,6 @@ class Requester {
 				'is_admin' => is_admin(),
 			)
 		);
-
-		$this->init_requirements();
 	}
 
 	/**
@@ -202,7 +156,7 @@ class Requester {
 	 *
 	 * @return void
 	 */
-	private function init_requirements() {
+	public function init_requirements() {
 		$requirements = array(
 			'Admin_Page',
 			'Ajax_Endpoints',
@@ -212,6 +166,38 @@ class Requester {
 		foreach ( $requirements as $requirement ) {
 			( __CLASS__ . '_' . $requirement )::init();
 		}
+	}
+
+	/**
+	 * Initialize plugin settings
+	 *
+	 * @return void
+	 */
+	public function init_settings() {
+		$defaults = array(
+			'cache_expiration' => HOUR_IN_SECONDS,
+		);
+
+		self::$settings = get_option( 'requester_settings' );
+
+		// Return defaults if not initialized yet.
+		self::$settings = wp_parse_args( self::$settings, $defaults );
+
+		// Return defaults if setting is left blank.
+		foreach ( self::$settings as $setting => $value ) {
+			if ( empty( $value ) ) {
+				self::$settings[ $setting ] = $defaults[ $setting ];
+			}
+		}
+
+		update_option( 'requester_settings', self::$settings );
+	}
+
+	/**
+	 * Registers a setting
+	 */
+	public function register_settings() {
+		register_setting( 'requester_settings', 'Requester' );
 	}
 
 	/**
@@ -260,5 +246,35 @@ class Requester {
 		}
 
 		return self::$assets_url . $folder . '/' . $filename . '.' . $file_extension;
+	}
+
+	/**
+	 * Delete plugin cached data
+	 *
+	 * @return bool
+	 */
+	public static function flush_cache() {
+		return delete_transient( 'requester' );
+	}
+
+	/**
+	 * Set plugin cache expiration
+	 *
+	 * @param int $time Expiration time in seconds.
+	 * @return mixed
+	 */
+	public static function set_cache_expiration( $time ) {
+		$settings                     = get_option( 'requester_settings' );
+		$settings['cache_expiration'] = (int) $time;
+
+		if ( update_option( 'requester_settings', $settings ) ) {
+			if ( $data = get_transient( 'requester' ) ) { // phpcs:ignore
+				set_transient( 'requester', $data, $settings['cache_expiration'] );
+			}
+
+			return true;
+		}
+
+		return false;
 	}
 }

@@ -60,7 +60,7 @@ spl_autoload_register(
 			strtolower( $classname )
 		);
 
-		$dirs = array( '/includes', '/includes/admin' );
+		$dirs = array( '/includes', '/includes/CLI' );
 
 		foreach ( $dirs as $dir ) {
 			$file = dirname( __FILE__ ) . $dir . '/class-' . $file_name . '.php';
