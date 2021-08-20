@@ -154,7 +154,7 @@ class Requester {
 	 *
 	 * @return string
 	 */
-	public static function get_nonce() {
+	public static function get_nonce_context() {
 		return self::$nonce_context;
 	}
 
@@ -171,6 +171,47 @@ class Requester {
 		add_action( 'init', array( $this, 'init_hooks' ) );
 
 		do_action( 'requester_loaded' );
+	}
+
+	/**
+	 * Initialize hooks and actions
+	 * (We could have used wp-util here as a dependency for requester-shortcode.js
+	 *  and use wp.ajax in the script but I prefer plain JS)
+	 *
+	 * @return void
+	 */
+	public function init_hooks() {
+		wp_register_style( 'requester', $this->get_style_filename(), array(), self::$version );
+		wp_register_script( 'requester', self::$url . 'assets/js/requester.js', array(), self::$version, false );
+		wp_localize_script(
+			'requester',
+			'requester',
+			array(
+				'nonce'    => wp_create_nonce( self::$nonce_context ),
+				'ajax_url' => admin_url( 'admin-ajax.php' ),
+				'locale'   => get_bloginfo( 'language' ),
+				'is_admin' => is_admin(),
+			)
+		);
+
+		$this->init_requirements();
+	}
+
+	/**
+	 * Load plugin requirements.
+	 *
+	 * @return void
+	 */
+	private function init_requirements() {
+		$requirements = array(
+			'Admin_Page',
+			'Ajax_Endpoints',
+			'Shortcodes',
+		);
+
+		foreach ( $requirements as $requirement ) {
+			( __CLASS__ . '_' . $requirement )::init();
+		}
 	}
 
 	/**
@@ -193,7 +234,7 @@ class Requester {
 	/**
 	 * Check if referer is plugin admin page.
 	 */
-	public function is_referer() {
+	public static function is_referer() {
 		if ( ! is_admin() ) {
 			return false;
 		}
@@ -219,112 +260,5 @@ class Requester {
 		}
 
 		return self::$assets_url . $folder . '/' . $filename . '.' . $file_extension;
-	}
-
-	/**
-	 * Initialize hooks and actions
-	 * (We could have used wp-util here as a dependency for requester-shortcode.js
-	 *  and use wp.ajax in the script but I prefer plain JS)
-	 *
-	 * @return void
-	 */
-	public function init_hooks() {
-		wp_register_style( 'requester', $this->get_style_filename(), array(), self::$version );
-		wp_register_script( 'requester', self::$url . 'assets/js/requester.js', array(), self::$version, false );
-		wp_localize_script(
-			'requester',
-			'requester',
-			array(
-				'nonce'    => wp_create_nonce( self::$nonce_context ),
-				'ajax_url' => admin_url( 'admin-ajax.php' ),
-				'locale'   => get_bloginfo( 'language' ),
-				'is_admin' => is_admin(),
-			)
-		);
-		add_shortcode( 'requester', array( $this, 'return_data_via_ajax' ) );
-		add_action( 'wp_ajax_return_data', array( $this, 'return_data' ) );
-		add_action( 'wp_ajax_nopriv_return_data', array( $this, 'return_data' ) );
-
-		add_action( 'admin_menu', array( $this, 'register_admin_menu_page' ) );
-		add_action( 'in_admin_header', array( 'Requester_Admin_Page', 'get_header' ), 100 );
-	}
-
-	/**
-	 * Register admin page.
-	 *
-	 * @return void
-	 */
-	public function register_admin_menu_page() {
-		add_menu_page(
-			__( 'Requester admin page', 'requester' ),
-			__( 'Requester', 'requester' ),
-			'manage_options',
-			'requester',
-			array( 'Requester_Admin_Page', 'render' ),
-			'dashicons-welcome-widgets-menus',
-			99
-		);
-	}
-
-	/**
-	 * Registers a setting
-	 */
-	public function register_settings() {
-		register_setting( 'requester_settings', 'Requester' );
-	}
-
-	/**
-	 *  Shortcode callback
-	 *
-	 * @return string
-	 */
-	public function return_data_via_ajax() {
-		wp_enqueue_style( 'requester' );
-		wp_enqueue_script( 'requester' );
-
-		return <<<HTML
-			<div id="requester-data">
-				<div id="table-loader" style="display:none">
-					<div class="rect1"></div>
-					<div class="rect2"></div>
-					<div class="rect3"></div>
-					<div class="rect4"></div>
-					<div class="rect5"></div>
-				</div>
-			</div>	
-HTML;
-	}
-
-	/**
-	 * Ajax callback.
-	 *
-	 * @return void
-	 */
-	public function return_data() {
-		check_ajax_referer( self::$nonce_context, 'nonce' );
-
-		if ( isset( $_POST['refresh'] ) && $this->is_referer() ) {
-			delete_transient( 'requester' );
-		}
-
-		if ( false === ( $data = get_transient( 'requester' ) ) ) { // phpcs:ignore
-			// This code runs when there is no valid transient set.
-			$response = wp_remote_get( 'https://miusage.com/v1/challenge/1/' );
-
-			if ( is_array( $response ) && ! is_wp_error( $response ) ) {
-				$data = ( new Requester_Data_Validator( $response['body'] ) )->validate();
-
-				if ( ! $data ) {
-					wp_die( wp_json_encode( array( 'error' => __( 'Invalid data.', 'requester' ) ) ) );
-				}
-
-				set_transient( 'requester', $data, HOUR_IN_SECONDS );
-				wp_die( wp_json_encode( $data ) );
-			}
-
-			wp_die( wp_json_encode( array( 'error' => __( 'API data not available.', 'requester' ) ) ) );
-		} else {
-			wp_die( wp_json_encode( $data ) );
-		}
 	}
 }
