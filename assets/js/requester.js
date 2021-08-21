@@ -133,9 +133,6 @@ if (requester.is_admin) {
 		label: document.getElementsByClassName("button-label")[0],
 		loader: document.getElementsByClassName("button-loader")[0],
 	};
-	requester.test = function () {
-		console.log(this);
-	};
 
 	requester.elements.refreshButton.element.addEventListener(
 		"click",

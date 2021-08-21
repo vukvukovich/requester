@@ -33,7 +33,7 @@ class Requester_Ajax_Endpoints {
 			Requester::flush_cache();
 		}
 
-		if ( false === ( $data = get_transient( 'requester' ) ) ) { // phpcs:ignore
+		if ( false === ( $data = get_transient( Requester::get_slug() ) ) ) { // phpcs:ignore
 			// This code runs when there is no valid transient set.
 			$response = wp_remote_get( 'https://miusage.com/v1/challenge/1/' );
 
@@ -44,7 +44,7 @@ class Requester_Ajax_Endpoints {
 					wp_die( wp_json_encode( array( 'error' => __( 'Invalid data.', 'requester' ) ) ) );
 				}
 
-				set_transient( 'requester', $data, Requester::get_settings()['cache_expiration'] );
+				set_transient( Requester::get_slug(), $data, Requester::get_settings()['cache_expiration'] );
 				wp_die( wp_json_encode( $data ) );
 			}
 

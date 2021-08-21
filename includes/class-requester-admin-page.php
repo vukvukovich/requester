@@ -30,7 +30,7 @@ class Requester_Admin_Page {
 			esc_html__( 'Requester admin page', 'requester' ),
 			esc_html( 'Requester' ),
 			'manage_options',
-			'requester',
+			Requester::get_slug(),
 			array( __CLASS__, 'render' ),
 			'dashicons-welcome-widgets-menus',
 			99
@@ -38,9 +38,9 @@ class Requester_Admin_Page {
 	}
 
 	/**
-	 * Notice bar display message.
+	 * Set admin page header.
 	 *
-	 * @since 2.3.0
+	 * @return void
 	 */
 	public static function get_header() {
 		$plugin = Requester::get_instance();

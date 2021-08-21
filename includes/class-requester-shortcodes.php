@@ -27,8 +27,8 @@ class Requester_Shortcodes {
 	 * @return string
 	 */
 	public static function return_data_via_ajax() {
-		wp_enqueue_style( 'requester' );
-		wp_enqueue_script( 'requester' );
+		wp_enqueue_style( Requester::get_slug() );
+		wp_enqueue_script( Requester::get_slug() );
 
 		return <<<HTML
 			<div id="requester-data">

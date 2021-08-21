@@ -11,20 +11,18 @@
  */
 class Requester {
 	/**
+	 * Plugin instance
+	 *
+	 * @var object $instance
+	 */
+	private static $instance;
+
+	/**
 	 * Plugin version
 	 *
 	 * @var string $version
 	 */
 	private static $version;
-
-	/**
-	 * Get plugin version
-	 *
-	 * @return string The version number of the plugin
-	 */
-	public static function get_version() {
-		return self::$version;
-	}
 
 	/**
 	 * Plugin directory url
@@ -34,13 +32,11 @@ class Requester {
 	private static $url;
 
 	/**
-	 * Get plugin directory url
+	 * Plugin directory path
 	 *
-	 * @return string
+	 * @var string $path
 	 */
-	public static function get_url() {
-		return self::$url;
-	}
+	private static $path;
 
 	/**
 	 * Plugin directory url
@@ -50,20 +46,18 @@ class Requester {
 	private static $assets_url;
 
 	/**
-	 * Get plugin directory url
+	 * Plugin nonce context
 	 *
-	 * @return string
+	 * @var string $nonce_context
 	 */
-	public static function get_assets_url() {
-		return self::$assets_url;
-	}
+	private static $nonce_context;
 
 	/**
-	 * Plugin instance
+	 * Plugin slug
 	 *
-	 * @var object $instance
+	 * @var string $slug
 	 */
-	private static $instance;
+	private static $slug;
 
 	/**
 	 * Plugin current user settings from DB
@@ -73,59 +67,22 @@ class Requester {
 	private static $settings;
 
 	/**
-	 * Get current plugin settings from DB
-	 *
-	 * @return object $settings
-	 */
-	public static function get_settings() {
-		return self::$settings;
-	}
-
-	/**
-	 * Plugin nonce context
-	 *
-	 * @var string $nonce_context
-	 */
-	private static $nonce_context;
-
-	/**
-	 * Get plugin nonce context
-	 *
-	 * @return string
-	 */
-	public static function get_nonce_context() {
-		return self::$nonce_context;
-	}
-
-	/**
 	 * Constructor
 	 */
 	private function __construct() {
 		self::$version       = '1.0.0';
 		self::$url           = plugin_dir_url( __DIR__ );
+		self::$path          = plugin_dir_path( __DIR__ );
 		self::$assets_url    = self::$url . 'assets/';
 		self::$nonce_context = 'requester-example-nonce';
+		self::$slug          = 'requester'; // We could have used at some point get_plugin_data(). Not really needed.
 
 		add_action( 'init', array( $this, 'init_scripts' ) );
 		add_action( 'init', array( $this, 'init_settings' ), 5 );
 		add_action( 'init', array( $this, 'init_requirements' ) );
-		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'cli_init', array( 'Requester_CLI', 'register_commands' ) );
 
 		do_action( 'requester_loaded' );
-	}
-
-	/**
-	 * Initialize plugin
-	 *
-	 * @return Requester Returns Requester object
-	 */
-	public static function get_instance() {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-
-		return self::$instance;
 	}
 
 	/**
@@ -137,11 +94,11 @@ class Requester {
 	 * @return void
 	 */
 	public function init_scripts() {
-		wp_register_style( 'requester', $this->get_style_filename(), array(), self::$version );
-		wp_register_script( 'requester', self::$url . 'assets/js/requester.js', array(), self::$version, false );
+		wp_register_style( self::$slug, $this->get_style_filename(), array(), self::$version );
+		wp_register_script( self::$slug, self::$url . 'assets/js/requester.min.js', array(), self::$version, false );
 		wp_localize_script(
-			'requester',
-			'requester',
+			self::$slug,
+			self::$slug,
 			array(
 				'nonce'    => wp_create_nonce( self::$nonce_context ),
 				'ajax_url' => admin_url( 'admin-ajax.php' ),
@@ -174,30 +131,14 @@ class Requester {
 	 * @return void
 	 */
 	public function init_settings() {
-		$defaults = array(
-			'cache_expiration' => HOUR_IN_SECONDS,
-		);
+		$option_name = 'requester_cache_expiration';
 
-		self::$settings = get_option( 'requester_settings' );
+		if ( $expiration_time = get_option( $option_name ) ) { // phpcs:ignore
+			self::$settings['cache_expiration'] = $expiration_time;
 
-		// Return defaults if not initialized yet.
-		self::$settings = wp_parse_args( self::$settings, $defaults );
-
-		// Return defaults if setting is left blank.
-		foreach ( self::$settings as $setting => $value ) {
-			if ( empty( $value ) ) {
-				self::$settings[ $setting ] = $defaults[ $setting ];
-			}
+		} else {
+			update_option( $option_name, HOUR_IN_SECONDS );
 		}
-
-		update_option( 'requester_settings', self::$settings );
-	}
-
-	/**
-	 * Registers a setting
-	 */
-	public function register_settings() {
-		register_setting( 'requester_settings', 'Requester' );
 	}
 
 	/**
@@ -245,7 +186,7 @@ class Requester {
 			$filename .= '-admin';
 		}
 
-		return self::$assets_url . $folder . '/' . $filename . '.' . $file_extension;
+		return self::$assets_url . $folder . '/' . $filename . '.min.' . $file_extension;
 	}
 
 	/**
@@ -254,7 +195,7 @@ class Requester {
 	 * @return bool
 	 */
 	public static function flush_cache() {
-		return delete_transient( 'requester' );
+		return delete_transient( self::$slug );
 	}
 
 	/**
@@ -264,17 +205,93 @@ class Requester {
 	 * @return mixed
 	 */
 	public static function set_cache_expiration( $time ) {
-		$settings                     = get_option( 'requester_settings' );
-		$settings['cache_expiration'] = (int) $time;
+		$expiration_time = (int) $time;
 
-		if ( update_option( 'requester_settings', $settings ) ) {
-			if ( $data = get_transient( 'requester' ) ) { // phpcs:ignore
-				set_transient( 'requester', $data, $settings['cache_expiration'] );
+		// Set expiration time and update transient if available.
+		if ( update_option( 'requester_cache_expiration', $expiration_time ) ) {
+			if ( $data = get_transient( self::$slug ) ) { // phpcs:ignore
+				set_transient( self::$slug, $data, $expiration_time );
 			}
 
 			return true;
 		}
 
 		return false;
+	}
+
+	/**
+	 * Initialize plugin
+	 *
+	 * @return Requester Returns Requester object
+	 */
+	public static function get_instance() {
+		if ( null === self::$instance ) {
+			self::$instance = new self();
+		}
+
+		return self::$instance;
+	}
+
+	/**
+	 * Get plugin version
+	 *
+	 * @return string The version number of the plugin
+	 */
+	public static function get_version() {
+		return self::$version;
+	}
+
+	/**
+	 * Get plugin directory url
+	 *
+	 * @return string
+	 */
+	public static function get_url() {
+		return self::$url;
+	}
+
+	/**
+	 * Get plugin path
+	 *
+	 * @return string Plugin directory path
+	 */
+	public static function get_path() {
+		return self::$path;
+	}
+
+	/**
+	 * Get plugin directory url
+	 *
+	 * @return string
+	 */
+	public static function get_assets_url() {
+		return self::$assets_url;
+	}
+
+	/**
+	 * Get plugin nonce context
+	 *
+	 * @return string
+	 */
+	public static function get_nonce_context() {
+		return self::$nonce_context;
+	}
+
+	/**
+	 * Get plugin slug
+	 *
+	 * @return string
+	 */
+	public static function get_slug() {
+		return self::$slug;
+	}
+
+	/**
+	 * Get current plugin settings from DB
+	 *
+	 * @return object $settings
+	 */
+	public static function get_settings() {
+		return self::$settings;
 	}
 }
